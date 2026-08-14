@@ -5,10 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [Medicion::class], version = 2, exportSchema = false)
+@Database(entities = [Medicion::class, RegistroExposicion::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun medicionDao(): MedicionDao
+
+    abstract fun registroExposicionDao(): RegistroExposicionDao
 
     companion object {
         @Volatile

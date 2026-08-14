@@ -1,6 +1,5 @@
 package com.example.soundscapemapper.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -11,33 +10,63 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val LightColorScheme = lightColorScheme(
+    primary = SaludPrimary,
+    onPrimary = SaludOnPrimary,
+    primaryContainer = SaludPrimaryContainer,
+    onPrimaryContainer = SaludOnPrimaryContainer,
+    secondary = SaludSecondary,
+    onSecondary = SaludOnSecondary,
+    secondaryContainer = SaludSecondaryContainer,
+    onSecondaryContainer = SaludOnSecondaryContainer,
+    tertiary = SaludTertiary,
+    onTertiary = SaludOnTertiary,
+    tertiaryContainer = SaludTertiaryContainer,
+    onTertiaryContainer = SaludOnTertiaryContainer,
+    error = SaludError,
+    onError = SaludOnError,
+    errorContainer = SaludErrorContainer,
+    onErrorContainer = SaludOnErrorContainer,
+    background = SaludBackground,
+    onBackground = SaludOnBackground,
+    surface = SaludSurface,
+    onSurface = SaludOnSurface,
+    surfaceVariant = SaludSurfaceVariant,
+    onSurfaceVariant = SaludOnSurfaceVariant,
+    outline = SaludOutline
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val DarkColorScheme = darkColorScheme(
+    primary = SaludPrimaryDark,
+    onPrimary = SaludOnPrimaryDark,
+    primaryContainer = SaludPrimaryContainerDark,
+    onPrimaryContainer = SaludOnPrimaryContainerDark,
+    secondary = SaludSecondaryDark,
+    onSecondary = SaludOnSecondaryDark,
+    secondaryContainer = SaludSecondaryContainerDark,
+    onSecondaryContainer = SaludOnSecondaryContainerDark,
+    tertiary = SaludTertiaryDark,
+    onTertiary = SaludOnTertiaryDark,
+    tertiaryContainer = SaludTertiaryContainerDark,
+    onTertiaryContainer = SaludOnTertiaryContainerDark,
+    error = SaludErrorDark,
+    onError = SaludOnErrorDark,
+    errorContainer = SaludErrorContainerDark,
+    onErrorContainer = SaludOnErrorContainerDark,
+    background = SaludBackgroundDark,
+    onBackground = SaludOnBackgroundDark,
+    surface = SaludSurfaceDark,
+    onSurface = SaludOnSurfaceDark,
+    surfaceVariant = SaludSurfaceVariantDark,
+    onSurfaceVariant = SaludOnSurfaceVariantDark,
+    outline = SaludOutlineDark
 )
 
 @Composable
 fun SoundscapeMapperTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    // Identidad propia de la marca: se usa la paleta de salud en lugar de color dinámico del sistema.
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

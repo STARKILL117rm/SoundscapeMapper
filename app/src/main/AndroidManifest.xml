@@ -24,6 +24,11 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.SoundscapeMapper">
 
+        <!-- Clave de API de Google Maps (injectada por Gradle) -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="${MAPS_API_KEY}" />
+
         <!-- Declaración del Servicio para Escucha en Segundo Plano -->
         <service
             android:name=".AudioMonitorService"

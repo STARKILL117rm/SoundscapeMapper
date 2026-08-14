@@ -13,7 +13,6 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import kotlinx.coroutines.*
-import kotlin.math.log10
 
 class AudioMonitorService : Service() {
 
@@ -54,20 +53,18 @@ class AudioMonitorService : Service() {
             audioRecord?.startRecording()
             isMonitoring = true
 
+            val contexto = applicationContext
+            val umbralAlerta = Configuracion.umbralAlerta(contexto)
+
             serviceScope.launch {
                 val buffer = ShortArray(bufferSize)
                 while (isMonitoring) {
                     val readSize = audioRecord?.read(buffer, 0, buffer.size) ?: 0
                     if (readSize > 0) {
-                        var sum = 0.0
-                        for (i in 0 until readSize) {
-                            sum += buffer[i] * buffer[i]
-                        }
-                        val amplitude = sum / readSize
-                        val db = if (amplitude > 0) 10 * log10(amplitude) else 0.0
+                        val db = SoundAnalyzer.calcularDbA(buffer, readSize)
 
-                        // Umbral de alerta: Ruido alto superior a 80 dB
-                        if (db >= 80.0) {
+                        // Umbral de alerta configurable por el usuario (por defecto 80 dB)
+                        if (db >= umbralAlerta) {
                             val tiempoActual = System.currentTimeMillis()
                             // Evitar spam de notificaciones: máximo 1 alerta cada 2 minutos
                             if (tiempoActual - ultimaNotificacionTime > 120_000) {
@@ -99,7 +96,7 @@ class AudioMonitorService : Service() {
 
     private fun crearNotificacionServicio(texto: String): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Soundscape Mapper Activo")
+            .setContentTitle("Espacio Seguro Activo")
             .setContentText(texto)
             .setSmallIcon(android.R.drawable.ic_btn_speak_now)
             .setPriority(NotificationCompat.PRIORITY_LOW)
