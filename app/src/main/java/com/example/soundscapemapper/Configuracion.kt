@@ -8,6 +8,7 @@ object Configuracion {
     private const val KEY_UMBRAL_ALERTA = "umbral_alerta_db"
     private const val KEY_SERVICIO_ACTIVO = "servicio_activo"
     private const val KEY_CAPTURA_PAUSADA = "captura_pausada"
+    private const val KEY_HISTORIAS_VISTAS = "historias_vistas"
 
     const val UMBRAL_ALERTA_DEFECTO = 80.0
     const val UMBRAL_ALERTA_MINIMO = 60.0
@@ -35,5 +36,15 @@ object Configuracion {
 
     fun guardarCapturaPausada(context: Context, pausada: Boolean) {
         prefs(context).edit().putBoolean(KEY_CAPTURA_PAUSADA, pausada).apply()
+    }
+
+    fun historiasVistas(context: Context): Set<String> =
+        prefs(context).getStringSet(KEY_HISTORIAS_VISTAS, emptySet()) ?: emptySet()
+
+    fun marcarHistoriaVista(context: Context, id: String) {
+        val set = historiasVistas(context).toMutableSet()
+        if (set.add(id)) {
+            prefs(context).edit().putStringSet(KEY_HISTORIAS_VISTAS, set).apply()
+        }
     }
 }

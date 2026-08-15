@@ -1,6 +1,8 @@
 package com.example.soundscapemapper.ui.screens.registro
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -13,27 +15,31 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,10 +57,13 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.soundscapemapper.AppDatabase
 import com.example.soundscapemapper.Medicion
+import com.example.soundscapemapper.SoundAnalyzer
 import com.example.soundscapemapper.ui.components.AzulInfo
+import com.example.soundscapemapper.ui.components.InsigniaCategoria
 import com.example.soundscapemapper.ui.components.RojoSalud
 import com.example.soundscapemapper.ui.components.VerdeSalud
 import com.example.soundscapemapper.ui.viewmodel.RegistroViewModel
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,27 +71,38 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
     val vm: RegistroViewModel = viewModel(factory = RegistroViewModel.factory(db))
     LaunchedEffect(Unit) { vm.cargar() }
 
+    var seleccionada by remember { mutableStateOf<Medicion?>(null) }
     var pendienteBorrar by remember { mutableStateOf<Medicion?>(null) }
     val haptic = LocalHapticFeedback.current
+    val hojaSheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Registro de mediciones") },
+                title = { Text("Registro") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
         floatingActionButton = {
-            androidx.compose.material3.ExtendedFloatingActionButton(
+            FloatingActionButton(
                 onClick = onNuevaMedicion,
-                containerColor = VerdeSalud,
-                contentColor = Color.White
+                shape = RoundedCornerShape(20.dp),
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+                elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(
+                    defaultElevation = 3.dp
+                )
             ) {
-                Icon(Icons.Filled.Add, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text("Nueva medición", fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Nueva medición", fontWeight = FontWeight.Bold)
+                }
             }
         }
     ) { padding ->
@@ -91,17 +111,6 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Contador("Total", "${vm.mediciones.size}", MaterialTheme.colorScheme.onSurfaceVariant)
-                Contador("Tranquilos", "${vm.mediciones.count { it.categoria == "Tranquilo" }}", VerdeSalud)
-                Contador("Estresantes", "${vm.mediciones.count { it.categoria == "Estresante" }}", RojoSalud)
-            }
-
             OutlinedTextField(
                 value = vm.busqueda,
                 onValueChange = { vm.busqueda = it },
@@ -110,10 +119,10 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(10.dp)
+                shape = RoundedCornerShape(18.dp)
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
 
             Row(
                 modifier = Modifier
@@ -122,11 +131,11 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 ChipFiltro("Todos", vm.filtro == 0) { vm.filtro = 0 }
-                ChipFiltro("🌿 Tranquilos", vm.filtro == 1) { vm.filtro = 1 }
-                ChipFiltro("⚠️ Estresantes", vm.filtro == 2) { vm.filtro = 2 }
+                ChipFiltro("Tranquilos", vm.filtro == 1) { vm.filtro = 1 }
+                ChipFiltro("Estresantes", vm.filtro == 2) { vm.filtro = 2 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(top = 8.dp))
+            HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
 
             val lista = vm.listaFiltrada
             if (vm.mediciones.isEmpty()) {
@@ -179,14 +188,37 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(lista, key = { it.id }) { m ->
-                        ItemMedicion(
+                        ItemLugar(
                             m = m,
-                            onAlternarCategoria = { vm.alternarCategoria(m) },
-                            onEliminar = { pendienteBorrar = m }
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                seleccionada = m
+                            }
                         )
                     }
                 }
             }
+        }
+    }
+
+    seleccionada?.let { m ->
+        ModalBottomSheet(
+            onDismissRequest = { seleccionada = null },
+            sheetState = hojaSheet
+        ) {
+            DetalleMedicion(
+                m = m,
+                onCerrar = { seleccionada = null },
+                onCambiarEstado = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    vm.alternarCategoria(m)
+                    seleccionada = null
+                },
+                onEliminar = {
+                    pendienteBorrar = m
+                    seleccionada = null
+                }
+            )
         }
     }
 
@@ -214,105 +246,225 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
 }
 
 @Composable
-private fun RowScope.Contador(titulo: String, valor: String, color: Color) {
-    Card(
-        modifier = Modifier.weight(1f),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(titulo, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(2.dp))
-            Text(valor, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = color)
-        }
-    }
-}
-
-@Composable
 private fun ChipFiltro(texto: String, seleccionado: Boolean, onClick: () -> Unit) {
     FilterChip(
         selected = seleccionado,
         onClick = onClick,
         label = { Text(texto, fontSize = 12.sp) },
+        shape = RoundedCornerShape(14.dp),
+        border = if (seleccionado) {
+            androidx.compose.foundation.BorderStroke(1.dp, VerdeSalud.copy(alpha = 0.4f))
+        } else {
+            androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
+        },
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = VerdeSalud,
-            selectedLabelColor = Color.White,
-            selectedLeadingIconColor = Color.White
+            selectedContainerColor = VerdeSalud.copy(alpha = 0.14f),
+            selectedLabelColor = Color(0xFF00695C),
+            labelColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
     )
 }
 
 @Composable
-private fun ItemMedicion(
-    m: Medicion,
-    onAlternarCategoria: () -> Unit,
-    onEliminar: () -> Unit
-) {
-    val haptic = LocalHapticFeedback.current
+private fun ItemLugar(m: Medicion, onClick: () -> Unit) {
+    val colorCategoria = if (m.categoria == "Tranquilo") VerdeSalud else RojoSalud
     Card(
         modifier = Modifier.fillMaxWidth(),
-        onClick = {
-            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onAlternarCategoria()
-        },
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .background(colorCategoria.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(m.contextoEmoji, fontSize = 22.sp)
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    if (m.categoria == "Tranquilo") "🌿" else "⚠️",
-                    fontSize = 22.sp
+                    text = m.nombreLugar.ifBlank { "Lugar sin nombre" },
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(Modifier.width(10.dp))
+                Spacer(Modifier.height(3.dp))
+                Text(
+                    text = m.fechaHora,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            InsigniaCategoria(tranquilo = m.categoria == "Tranquilo")
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DetalleMedicion(
+    m: Medicion,
+    onCerrar: () -> Unit,
+    onCambiarEstado: () -> Unit,
+    onEliminar: () -> Unit
+) {
+    val nivel = SoundAnalyzer.clasificarNivel(m.decibelios)
+    val colorNivel = Color(nivel.colorHex)
+    val esTranquilo = m.categoria == "Tranquilo"
+    val colorCategoria = if (esTranquilo) VerdeSalud else RojoSalud
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 24.dp, end = 24.dp, bottom = 36.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .background(colorCategoria.copy(alpha = 0.12f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(m.contextoEmoji, fontSize = 26.sp)
+            }
+            Spacer(Modifier.width(14.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = m.nombreLugar.ifBlank { "Lugar sin nombre" },
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(Modifier.height(4.dp))
+                InsigniaCategoria(tranquilo = esTranquilo)
+            }
+        }
+
+        Spacer(Modifier.height(20.dp))
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = colorNivel.copy(alpha = 0.10f)
+            ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(m.nombreLugar, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     Text(
-                        if (m.categoria == "Tranquilo") "Tranquilo · toca para marcar estresante"
-                        else "Estresante · toca para marcar tranquilo",
-                        fontSize = 10.sp,
+                        text = "Nivel de ruido",
+                        fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Text(
+                            text = String.format(Locale.US, "%.1f", m.decibelios),
+                            fontSize = 34.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorNivel
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "dB",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = colorNivel.copy(alpha = 0.7f),
+                            modifier = Modifier.padding(bottom = 5.dp)
+                        )
+                    }
                 }
-                IconButton(onClick = onEliminar) {
-                    Icon(
-                        Icons.Filled.DeleteOutline,
-                        contentDescription = "Eliminar",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            Spacer(Modifier.height(6.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                DatoChip("${m.decibelios} dB", if (m.decibelios >= 80) RojoSalud else AzulInfo)
-                DatoChip("${m.nivelLuz.toInt()} lux", AzulInfo)
-                DatoChip(
-                    String.format(java.util.Locale.US, "%.3f, %.3f", m.latitud, m.longitud),
-                    AzulInfo
+                Text(
+                    text = nivel.etiqueta,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = colorNivel
                 )
             }
-            Spacer(Modifier.height(4.dp))
-            Text(m.fechaHora, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        FilaDetalle("Luz ambiental", "${m.nivelLuz.toInt()} lux", AzulInfo)
+        FilaDetalle("Coordenadas GPS", String.format(Locale.US, "%.4f, %.4f", m.latitud, m.longitud), AzulInfo)
+        FilaDetalle("Fecha y hora", m.fechaHora, MaterialTheme.colorScheme.onSurfaceVariant)
+
+        Spacer(Modifier.height(22.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TextButton(
+                onClick = onCambiarEstado,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Text(
+                    text = if (esTranquilo) "Marcar estresante" else "Marcar tranquilo",
+                    color = if (esTranquilo) RojoSalud else VerdeSalud,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Button(
+                onClick = onEliminar,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = RojoSalud.copy(alpha = 0.12f),
+                    contentColor = RojoSalud
+                )
+            ) {
+                Icon(Icons.Filled.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text("Eliminar", fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        TextButton(
+            onClick = onCerrar,
+            modifier = Modifier.align(Alignment.CenterHorizontally)
+        ) {
+            Text("Cerrar", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 @Composable
-private fun DatoChip(texto: String, color: Color) {
-    androidx.compose.material3.Surface(
-        color = color.copy(alpha = 0.1f),
-        shape = RoundedCornerShape(8.dp)
+private fun FilaDetalle(etiqueta: String, valor: String, color: Color) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            texto,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Medium,
-            color = color,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+            text = etiqueta,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        Text(
+            text = valor,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = color
         )
     }
 }

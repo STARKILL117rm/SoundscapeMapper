@@ -33,10 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-val VerdeSalud = Color(0xFF2E7D32)
-val AmbarSalud = Color(0xFFF9A825)
-val RojoSalud = Color(0xFFC62828)
-val AzulInfo = Color(0xFF1565C0)
+val VerdeSalud = Color(0xFF4DB6AC)
+val AmbarSalud = Color(0xFFF0B27A)
+val RojoSalud = Color(0xFFE07A5F)
+val AzulInfo = Color(0xFF5B8DB8)
 
 @Composable
 fun RowScope.TarjetaMetrica(
@@ -47,20 +47,36 @@ fun RowScope.TarjetaMetrica(
 ) {
     Card(
         modifier = Modifier.weight(1f),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.08f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(14.dp)) {
             Text(titulo, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Spacer(Modifier.height(2.dp))
+            Spacer(Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.Bottom) {
-                Text(valor, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = color)
+                Text(valor, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = color)
                 if (unidad.isNotEmpty()) {
                     Spacer(Modifier.width(3.dp))
-                    Text(unidad, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(bottom = 3.dp))
+                    Text(unidad, fontSize = 11.sp, color = color.copy(alpha = 0.8f), modifier = Modifier.padding(bottom = 3.dp))
                 }
             }
         }
+    }
+}
+
+@Composable
+fun TarjetaContenedor(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        content()
     }
 }
 

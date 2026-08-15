@@ -7,17 +7,17 @@ import kotlin.math.log10
 enum class NivelRuido(val etiqueta: String, val colorHex: Long, val recomendacion: String) {
     SEGURO(
         "Seguro",
-        0xFF2E7D32,
+        0xFF4DB6AC,
         "Ambiente cómodo y adecuado para la concentración. Disfruta del espacio."
     ),
     PRECAUCION(
         "Precaución",
-        0xFFF9A825,
+        0xFFF0B27A,
         "Ruido moderado. La exposición prolongada puede causar fatiga y estrés."
     ),
     PELIGRO(
         "Peligro",
-        0xFFC62828,
+        0xFFE07A5F,
         "Nivel elevado. Aléjate del lugar o usa protección auditiva."
     )
 }

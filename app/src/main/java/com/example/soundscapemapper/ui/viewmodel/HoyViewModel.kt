@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.soundscapemapper.AppDatabase
 import com.example.soundscapemapper.Medicion
+import com.example.soundscapemapper.RegistroExposicion
 import com.example.soundscapemapper.SoundAnalyzer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,6 +26,10 @@ class HoyViewModel(private val db: AppDatabase) : ViewModel() {
         private set
     var recientes by mutableStateOf(listOf<Medicion>())
         private set
+    var registrosSemana by mutableStateOf(listOf<RegistroExposicion>())
+        private set
+    var mediciones by mutableStateOf(listOf<Medicion>())
+        private set
 
     fun cargar() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -39,12 +44,14 @@ class HoyViewModel(private val db: AppDatabase) : ViewModel() {
                     if (r != null) SoundAnalyzer.puntosDosis(r.minutosSobre65, r.minutosSobre80).toFloat() else 0f
                 }
                 val etiquetas = fechas.map { it.second }
-                val ultimas = db.medicionDao().obtenerTodasLasMediciones().take(3)
+                val todas = db.medicionDao().obtenerTodasLasMediciones()
 
                 withContext(Dispatchers.Main) {
                     puntosSemana = puntos
                     diasSemana = etiquetas
-                    recientes = ultimas
+                    recientes = todas.take(3)
+                    registrosSemana = registros
+                    mediciones = todas
                 }
             } catch (e: Exception) {
                 e.printStackTrace()

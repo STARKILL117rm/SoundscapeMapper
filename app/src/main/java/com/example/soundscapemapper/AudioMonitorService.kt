@@ -6,19 +6,26 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import android.media.AudioFormat
-import android.media.AudioRecord
-import android.media.MediaRecorder
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
+/**
+ * Servicio en primer plano que mantiene la captura de audio activa aunque la app
+ * esté en segundo plano. La lectura del micrófono la realiza [AudioEngine] (el
+ * único dueño del AudioRecord); aquí solo se conserva la notificación de servicio
+ * y se disparan alertas empáticas cuando el ruido supera el umbral del usuario.
+ */
 class AudioMonitorService : Service() {
 
-    private var isMonitoring = false
-    private var audioRecord: AudioRecord? = null
     private val serviceScope = CoroutineScope(Dispatchers.IO + Job())
+    private var alertaJob: Job? = null
     private var ultimaNotificacionTime = 0L
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -29,64 +36,41 @@ class AudioMonitorService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = crearNotificacionServicio("Monitoreando salud auditiva en segundo plano...")
+        val notification = crearNotificacionServicio("Monitoreando tu salud auditiva en segundo plano…")
         startForeground(1, notification)
 
-        if (!isMonitoring) {
-            iniciarMonitoreoAudio()
+        AudioEngine.adquirir(this)
+
+        if (alertaJob?.isActive != true) {
+            alertaJob = serviceScope.launch {
+                val umbralAlerta = Configuracion.umbralAlerta(this@AudioMonitorService)
+                while (true) {
+                    val db = AudioEngine.decibelios.value
+                    if (db >= umbralAlerta) {
+                        val tiempoActual = System.currentTimeMillis()
+                        // Evitar spam: máximo 1 alerta cada 2 minutos.
+                        if (tiempoActual - ultimaNotificacionTime > 120_000) {
+                            lanzarAlertaRuidoExcesivo(db)
+                            ultimaNotificacionTime = tiempoActual
+                        }
+                    }
+                    delay(1000)
+                }
+            }
         }
 
         return START_STICKY
     }
 
-    private fun iniciarMonitoreoAudio() {
-        val sampleRate = 44100
-        val bufferSize = AudioRecord.getMinBufferSize(
-            sampleRate, AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT
-        )
-
-        try {
-            audioRecord = AudioRecord(
-                MediaRecorder.AudioSource.MIC, sampleRate,
-                AudioFormat.CHANNEL_IN_MONO, AudioFormat.ENCODING_PCM_16BIT, bufferSize
-            )
-            audioRecord?.startRecording()
-            isMonitoring = true
-
-            val contexto = applicationContext
-            val umbralAlerta = Configuracion.umbralAlerta(contexto)
-
-            serviceScope.launch {
-                val buffer = ShortArray(bufferSize)
-                while (isMonitoring) {
-                    val readSize = audioRecord?.read(buffer, 0, buffer.size) ?: 0
-                    if (readSize > 0) {
-                        val db = SoundAnalyzer.calcularDbA(buffer, readSize)
-
-                        // Umbral de alerta configurable por el usuario (por defecto 80 dB)
-                        if (db >= umbralAlerta) {
-                            val tiempoActual = System.currentTimeMillis()
-                            // Evitar spam de notificaciones: máximo 1 alerta cada 2 minutos
-                            if (tiempoActual - ultimaNotificacionTime > 120_000) {
-                                lanzarAlertaRuidoExcesivo(db)
-                                ultimaNotificacionTime = tiempoActual
-                            }
-                        }
-                    }
-                    delay(1000) // Evaluar cada segundo para ahorrar batería
-                }
-            }
-        } catch (e: SecurityException) {
-            e.printStackTrace()
-        }
-    }
-
     private fun lanzarAlertaRuidoExcesivo(db: Double) {
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val alerta = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("⚠️ ¡Nivel de ruido peligroso!")
-            .setContentText("Se detectaron ${db.toInt()} dB. Por tu salud auditiva, se recomienda buscar un espacio más tranquilo.")
-            .setSmallIcon(android.R.drawable.ic_dialog_alert)
+            .setContentTitle("Cuidado: entorno ruidoso")
+            .setContentText(
+                "Se detectaron ${db.toInt()} dB. Si vas a quedarte más de 15 minutos, " +
+                    "considera usar protección auditiva."
+            )
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
             .build()
@@ -117,9 +101,7 @@ class AudioMonitorService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
-        isMonitoring = false
-        audioRecord?.stop()
-        audioRecord?.release()
+        AudioEngine.liberar(this)
         serviceScope.cancel()
     }
 

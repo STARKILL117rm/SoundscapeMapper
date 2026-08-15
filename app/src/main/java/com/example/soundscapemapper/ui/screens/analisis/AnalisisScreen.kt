@@ -2,8 +2,10 @@ package com.example.soundscapemapper.ui.screens.analisis
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.location.Location
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +19,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,12 +67,37 @@ import com.example.soundscapemapper.ui.components.MedidorArco
 import com.example.soundscapemapper.ui.components.RojoSalud
 import com.example.soundscapemapper.ui.components.TarjetaMetrica
 import com.example.soundscapemapper.ui.components.VerdeSalud
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.coroutines.resume
+
+private val EmojisDisponibles = listOf("📍", "☕", "📚", "🏞️", "🚗", "🎧", "🏠", "✈️")
+
+private suspend fun obtenerUbicacionFresca(contexto: android.content.Context): Location? =
+    suspendCancellableCoroutine { continuation ->
+        try {
+            if (ContextCompat.checkSelfPermission(
+                    contexto, Manifest.permission.ACCESS_FINE_LOCATION
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                continuation.resume(null)
+                return@suspendCancellableCoroutine
+            }
+            val client = LocationServices.getFusedLocationProviderClient(contexto)
+            client.lastLocation
+                .addOnSuccessListener { loc -> continuation.resume(loc) }
+                .addOnFailureListener { continuation.resume(null) }
+                .addOnCanceledListener { continuation.resume(null) }
+        } catch (e: Exception) {
+            continuation.resume(null)
+        }
+    }
 
 @Composable
 fun AnalisisScreen(
@@ -86,6 +115,7 @@ fun AnalisisScreen(
     var resultado by remember { mutableStateOf<String?>(null) }
     var dbFinal by remember { mutableStateOf(0.0) }
     var nombreLugar by remember { mutableStateOf("") }
+    var contextoEmoji by remember { mutableStateOf("📍") }
     var guardando by remember { mutableStateOf(false) }
 
     val hayMicrofono = ContextCompat.checkSelfPermission(
@@ -126,13 +156,15 @@ fun AnalisisScreen(
         guardando = true
         scope.launch(Dispatchers.IO) {
             try {
+                val ubicacion = obtenerUbicacionFresca(contexto)
                 val nueva = Medicion(
                     nombreLugar = nombreLugar.trim().ifBlank { "Lugar sin nombre" },
                     categoria = resultado ?: "Tranquilo",
+                    contextoEmoji = contextoEmoji,
                     decibelios = dbFinal,
                     nivelLuz = sensorState.nivelLuz.value,
-                    latitud = sensorState.latitud.value,
-                    longitud = sensorState.longitud.value,
+                    latitud = ubicacion?.latitude ?: sensorState.latitud.value,
+                    longitud = ubicacion?.longitude ?: sensorState.longitud.value,
                     fechaHora = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
                 )
                 db.medicionDao().insertarMedicion(nueva)
@@ -154,7 +186,14 @@ fun AnalisisScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
             }
             Spacer(Modifier.width(4.dp))
-            Text("Analizar entorno", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Column {
+                Text("Analizar entorno", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(
+                    "Mide el ruido de un lugar en 5 segundos",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
 
         if (!hayMicrofono) {
@@ -179,18 +218,20 @@ fun AnalisisScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    if (muestreando) "Midiendo el nivel de sonido..." else "Resultado del análisis",
-                    fontWeight = FontWeight.Bold
+                    if (muestreando) "Escuchando el ambiente..." else "Resultado del análisis",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.height(8.dp))
                 Box(contentAlignment = Alignment.Center) {
@@ -258,6 +299,7 @@ fun AnalisisScreen(
             Spacer(Modifier.height(16.dp))
             Card(
                 modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = if (tranquilo) VerdeSalud.copy(alpha = 0.12f) else RojoSalud.copy(alpha = 0.12f)
                 )
@@ -299,6 +341,37 @@ fun AnalisisScreen(
                 shape = RoundedCornerShape(10.dp)
             )
 
+            Spacer(Modifier.height(12.dp))
+            Text(
+                "¿Con qué lo asocias?",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                items(EmojisDisponibles) { emoji ->
+                    val seleccionado = contextoEmoji == emoji
+                    Surface(
+                        onClick = { contextoEmoji = emoji },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (seleccionado) VerdeSalud.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surface,
+                        border = if (seleccionado) {
+                            BorderStroke(1.5.dp, VerdeSalud)
+                        } else {
+                            BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        }
+                    ) {
+                        Box(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(emoji, fontSize = 20.sp)
+                        }
+                    }
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -316,10 +389,13 @@ fun AnalisisScreen(
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         guardar()
                     },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp),
                     enabled = !guardando,
+                    shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (tranquilo) VerdeSalud else RojoSalud
+                        containerColor = if (tranquilo) Color(0xFF00796B) else RojoSalud
                     )
                 ) {
                     if (guardando) {

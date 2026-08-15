@@ -1,5 +1,7 @@
 package com.example.soundscapemapper.ui.navigation
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
@@ -14,11 +16,16 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -26,12 +33,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.soundscapemapper.AppDatabase
 import com.example.soundscapemapper.sensor.SensorStateHolder
-import com.example.soundscapemapper.ui.components.VerdeSalud
 import com.example.soundscapemapper.ui.screens.analisis.AnalisisScreen
 import com.example.soundscapemapper.ui.screens.hoy.HoyScreen
 import com.example.soundscapemapper.ui.screens.mapa.MapaScreen
 import com.example.soundscapemapper.ui.screens.registro.RegistroScreen
 import com.example.soundscapemapper.ui.screens.yo.YoScreen
+import java.time.LocalTime
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 object Rutas {
     const val HOY = "hoy"
@@ -50,6 +59,34 @@ private val destinos = listOf(
     Destino(Rutas.YO, "Guía", Icons.Filled.Person)
 )
 
+private val FondoOscuro = Color(0xFF0D1117)
+private val Menta = Color(0xFF00F5A0)
+private val Turquesa = Color(0xFF00D9F6)
+private val GrisInactivo = Color(0xFF8B949E)
+
+private data class TemaBarra(
+    val fondo: Color,
+    val indicador: Color,
+    val seleccionado: Color,
+    val inactivo: Color
+)
+
+private fun temaBarraPara(hora: Int): TemaBarra = when (hora) {
+    in 6..19 -> TemaBarra(
+        // Día y tarde usan esquema claro para mejor legibilidad; la noche usa el esquema oscuro.
+        fondo = Color(0xFFFAFAFA),
+        indicador = Color(0xFFDCFCE7),
+        seleccionado = Color(0xFF059669),
+        inactivo = Color(0xFF9CA3AF)
+    )
+    else -> TemaBarra(
+        fondo = Color(0xFF0B0E14),
+        indicador = Color(0xFF1F2937),
+        seleccionado = Menta,
+        inactivo = GrisInactivo
+    )
+}
+
 @Composable
 fun EspacioSeguroApp(
     db: AppDatabase,
@@ -64,10 +101,27 @@ fun EspacioSeguroApp(
 
     val mostrarBarra = rutaActual in destinos.map { it.ruta }
 
+    var horaBarra by remember { mutableIntStateOf(LocalTime.now().hour) }
+    LaunchedEffect(Unit) {
+        while (isActive) {
+            horaBarra = LocalTime.now().hour
+            delay(1000L)
+        }
+    }
+    val temaBarra = remember(horaBarra) { temaBarraPara(horaBarra) }
+    val fondoBarra by animateColorAsState(temaBarra.fondo, tween(1000), label = "fondoBarra")
+    val indicadorBarra by animateColorAsState(temaBarra.indicador, tween(1000), label = "indicadorBarra")
+    val seleccionadoBarra by animateColorAsState(temaBarra.seleccionado, tween(1000), label = "seleccionadoBarra")
+    val inactivoBarra by animateColorAsState(temaBarra.inactivo, tween(1000), label = "inactivoBarra")
+
     Scaffold(
+        containerColor = FondoOscuro,
         bottomBar = {
             if (mostrarBarra) {
-                NavigationBar {
+                NavigationBar(
+                    containerColor = fondoBarra,
+                    tonalElevation = 0.dp
+                ) {
                     destinos.forEach { destino ->
                         val seleccionado = rutaActual == destino.ruta
                         NavigationBarItem(
@@ -84,9 +138,11 @@ fun EspacioSeguroApp(
                             icon = { Icon(destino.icono, contentDescription = destino.etiqueta) },
                             label = { Text(destino.etiqueta, fontSize = 11.sp) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = VerdeSalud,
-                                selectedTextColor = VerdeSalud,
-                                indicatorColor = VerdeSalud.copy(alpha = 0.12f)
+                                selectedIconColor = seleccionadoBarra,
+                                selectedTextColor = seleccionadoBarra,
+                                indicatorColor = indicadorBarra,
+                                unselectedIconColor = inactivoBarra,
+                                unselectedTextColor = inactivoBarra
                             )
                         )
                     }
@@ -117,10 +173,7 @@ fun EspacioSeguroApp(
             composable(Rutas.HOY) {
                 HoyScreen(
                     db = db,
-                    sensorState = sensorState,
-                    onAnalizar = { navController.navigate(Rutas.ANALISIS) },
-                    onAlternarCaptura = onAlternarCaptura,
-                    onIrA = { navController.navigate(it) }
+                    sensorState = sensorState
                 )
             }
             composable(Rutas.ANALISIS) {

@@ -9,6 +9,7 @@ data class Medicion(
     val id: Int = 0,
     val nombreLugar: String,
     val categoria: String,     // Ej: Cafetería, Parque, Biblioteca
+    val contextoEmoji: String = "📍", // Icono de contexto visual (☕, 🚗, 📚…)
     val decibelios: Double,    // Lectura del micrófono
     val nivelLuz: Float,       // Lectura del sensor de luz
     val latitud: Double,       // Coordenada GPS

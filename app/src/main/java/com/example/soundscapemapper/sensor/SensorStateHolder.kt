@@ -4,10 +4,10 @@ import androidx.compose.runtime.mutableStateOf
 
 /**
  * Estado compartido de los sensores y la configuración en vivo.
- * El MainActivity es el motor que actualiza estos valores desde el
- * micrófono, el sensor de luz y el GPS; las pantallas solo los leen.
+ * El AudioEngine (micrófono) y el MainActivity (luz y GPS) actualizan
+ * estos valores; las pantallas solo los leen.
  */
-class SensorStateHolder {
+object SensorStateHolder {
     val decibelios = mutableStateOf(0.0)
     val nivelMaximo = mutableStateOf(0.0)
     val nivelLuz = mutableStateOf(0f)
