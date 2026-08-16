@@ -4,4 +4,7 @@
     <color name="launcher_foreground_light">#9CF1F5</color>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="splash_background">#0A0F1D</color>
+    <color name="splash_accent_menta">#00F5A0</color>
+    <color name="splash_accent_turquesa">#00D9F6</color>
 </resources>

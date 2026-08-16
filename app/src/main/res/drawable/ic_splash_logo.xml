@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+
+    <!-- Círculo de fondo oscuro con gradiente -->
+    <path
+        android:fillColor="#1E293B"
+        android:pathData="M60,60m-50,0a50,50 0,1 1,100 0a50,50 0,1 1,-100 0" />
+
+    <!-- Barra ecualizadora 1 -->
+    <path
+        android:fillColor="#00F5A0"
+        android:pathData="M38,50h6v20h-6z" />
+
+    <!-- Barra ecualizadora 2 -->
+    <path
+        android:fillColor="#00D9F6"
+        android:pathData="M48,40h6v40h-6z" />
+
+    <!-- Barra ecualizadora 3 (central alta) -->
+    <path
+        android:fillColor="#00F5A0"
+        android:pathData="M57,32h6v56h-6z" />
+
+    <!-- Barra ecualizadora 4 -->
+    <path
+        android:fillColor="#00D9F6"
+        android:pathData="M66,42h6v36h-6z" />
+
+    <!-- Barra ecualizadora 5 -->
+    <path
+        android:fillColor="#00F5A0"
+        android:pathData="M76,52h6v16h-6z" />
+</vector>

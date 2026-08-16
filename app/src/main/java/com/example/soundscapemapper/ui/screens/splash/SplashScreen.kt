@@ -55,9 +55,8 @@ import kotlinx.coroutines.delay
 
 @Composable
 fun SplashScreen(onFinished: () -> Unit) {
-    var visible by remember { mutableStateOf(false) }
-    val scale = remember { Animatable(0.7f) }
-    val alpha = remember { Animatable(0f) }
+    val scale = remember { Animatable(1f) }
+    val alpha = remember { Animatable(1f) }
 
     // Pulso infinito de ondas de sonido
     val infiniteTransition = rememberInfiniteTransition(label = "sonar")
@@ -99,17 +98,8 @@ fun SplashScreen(onFinished: () -> Unit) {
     )
 
     LaunchedEffect(Unit) {
-        visible = true
-        scale.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
-        )
-        alpha.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = 600)
-        )
-        // Espera de carga de 2 segundos antes de dar paso a la app principal
-        delay(2000L)
+        // Muestra el splash durante 1.8 segundos antes de dar paso a la app principal
+        delay(1800L)
         onFinished()
     }
 

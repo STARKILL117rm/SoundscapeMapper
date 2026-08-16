@@ -2,8 +2,10 @@
 <resources>
 
     <style name="Theme.SoundscapeMapper" parent="android:Theme.Material.NoActionBar">
-        <!-- Fondo oscuro con logo centrado desde el inicio del proceso (elimina el pantallazo blanco) -->
+        <!-- Compatibilidad nativa con Android 12+ Splash Screen API -->
         <item name="android:windowBackground">@drawable/splash_background</item>
+        <item name="android:windowSplashScreenBackground">@color/splash_background</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_logo</item>
         <item name="android:statusBarColor">@color/splash_background</item>
         <item name="android:navigationBarColor">@color/splash_background</item>
     </style>
