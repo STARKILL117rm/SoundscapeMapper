@@ -5,6 +5,8 @@
     <!-- Permisos para GPS -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Permiso de red (necesario para cargar los tiles de OpenStreetMap) -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Permiso para Micrófono (Audio) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
@@ -23,11 +25,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SoundscapeMapper">
-
-        <!-- Clave de API de Google Maps (injectada por Gradle) -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="${MAPS_API_KEY}" />
 
         <!-- Declaración del Servicio para Escucha en Segundo Plano -->
         <service

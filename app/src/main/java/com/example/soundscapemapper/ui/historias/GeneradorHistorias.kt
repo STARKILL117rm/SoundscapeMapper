@@ -10,6 +10,10 @@ import java.util.Locale
 /**
  * Genera la lista de historias del día mezclando informes personalizados
  * (calculados con los datos reales del usuario) y datos educativos de salud.
+ *
+ * Las 4 historias principales (Tu entorno, Dosis hoy, Pico más alto y
+ * Calidad ambiental) se enriquecen con fotografía contextual, métrica
+ * destacada, chip oficial de salud y gráfica animada para el visor inmersivo.
  */
 object GeneradorHistorias {
 
@@ -19,6 +23,16 @@ object GeneradorHistorias {
     private const val AZUL = 0xFF5B8DB8
     private const val VIOLETA = 0xFF8E7CC3
     private const val TEAL = 0xFF00897B
+
+    // Imágenes contextuales (Unsplash) para el fondo inmersivo del visor.
+    private const val IMAGEN_CIUDAD =
+        "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1000&q=80"
+    private const val IMAGEN_AURICULARES =
+        "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1000&q=80"
+    private const val IMAGEN_NOCTURNA =
+        "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=1000&q=80"
+    private const val IMAGEN_PARQUE =
+        "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?auto=format&fit=crop&w=1000&q=80"
 
     private val datosSabias = listOf(
         "Solo 5 minutos a 100 dB (lo que mide un concierto) pueden dañar tu audición de forma permanente.",
@@ -41,34 +55,50 @@ object GeneradorHistorias {
         puntosHoy: Double,
         registrosSemana: List<RegistroExposicion>,
         mediciones: List<Medicion>,
-        diaDelAnio: Int = Calendar.getInstance().get(Calendar.DAY_OF_YEAR)
+        diaDelAnio: Int = Calendar.getInstance().get(Calendar.DAY_OF_YEAR),
+        /** Porcentaje del tiempo de hoy en zonas seguras (usado por 'Calidad ambiental'). */
+        pctTiempoSeguro: Int = 100
     ): List<Historia> {
         val lista = mutableListOf<Historia>()
         val fechaHoy = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Calendar.getInstance().time)
 
+        // ── 1) TU ENTORNO ────────────────────────────────────────────────
         val nivel = SoundAnalyzer.clasificarNivel(decibeliosAhora)
+        val tendenciaAhora = (decibeliosAhora / 120.0).toFloat().coerceIn(0.2f, 1f)
         lista += Historia(
             id = "estado_actual_$fechaHoy",
             nombre = "Tu entorno",
             emoji = "🎧",
             colorHex = nivel.colorHex,
+            badge = "HOY",
+            imagenUrl = IMAGEN_CIUDAD,
             paginas = listOf(
                 PaginaHistoria(
                     emoji = "🔊",
                     titulo = "Tu entorno ahora mismo",
                     cuerpo = "El micrófono registra ${decibeliosAhora.toInt()} dB, un ambiente en nivel ${nivel.etiqueta.lowercase()}.",
                     colorHex = nivel.colorHex,
-                    datoDestacado = "${decibeliosAhora.toInt()} dB"
+                    datoDestacado = "${decibeliosAhora.toInt()} dB",
+                    metrica = "${decibeliosAhora.toInt()} dB",
+                    chip = "Nivel ${nivel.etiqueta} · OMS",
+                    imagenUrl = IMAGEN_CIUDAD,
+                    tipoGrafica = TipoGrafica.ONDA,
+                    tendencia = tendenciaAhora,
+                    alerta = decibeliosAhora >= SoundAnalyzer.UMBRAL_OMS_PELIGRO
                 ),
                 PaginaHistoria(
                     emoji = "💡",
                     titulo = "¿Qué significa?",
                     cuerpo = nivel.recomendacion,
-                    colorHex = nivel.colorHex
+                    colorHex = nivel.colorHex,
+                    imagenUrl = IMAGEN_CIUDAD,
+                    tipoGrafica = TipoGrafica.ONDA,
+                    tendencia = tendenciaAhora
                 )
             )
         )
 
+        // ── 2) DOSIS HOY ─────────────────────────────────────────────────
         val progreso = (puntosHoy / SoundAnalyzer.META_DOSIS_PUNTOS).coerceIn(0.0, 1.0)
         val colorDosis = when {
             progreso >= 1.0 -> ROJO
@@ -80,6 +110,8 @@ object GeneradorHistorias {
             nombre = "Dosis hoy",
             emoji = "⏱️",
             colorHex = colorDosis,
+            badge = "OMS",
+            imagenUrl = IMAGEN_AURICULARES,
             paginas = listOf(
                 PaginaHistoria(
                     emoji = "🎯",
@@ -90,13 +122,70 @@ object GeneradorHistorias {
                         "Todavía no acumulas puntos hoy. Sigue escuchando para conocer tu dosis."
                     },
                     colorHex = colorDosis,
-                    datoDestacado = "${puntosHoy.toInt()} / ${SoundAnalyzer.META_DOSIS_PUNTOS.toInt()} pts"
+                    datoDestacado = "${puntosHoy.toInt()} / ${SoundAnalyzer.META_DOSIS_PUNTOS.toInt()} pts",
+                    metrica = "${(progreso * 100).toInt()}%",
+                    chip = "Exposición diaria",
+                    imagenUrl = IMAGEN_AURICULARES,
+                    tipoGrafica = TipoGrafica.NIVEL,
+                    tendencia = progreso.toFloat()
                 ),
                 PaginaHistoria(
                     emoji = "📈",
                     titulo = "Minutos y máximo",
                     cuerpo = "≥65 dB: ${minutosSobre65Hoy.toInt()} min · ≥80 dB: ${minutosSobre80Hoy.toInt()} min.\nTu nivel más alto del día fue ${nivelMaximoHoy.toInt()} dB.",
-                    colorHex = colorDosis
+                    colorHex = colorDosis,
+                    imagenUrl = IMAGEN_AURICULARES
+                )
+            )
+        )
+
+        // ── 3) PICO MÁS ALTO ─────────────────────────────────────────────
+        lista += Historia(
+            id = "pico_mas_alto_$fechaHoy",
+            nombre = "Pico más alto",
+            emoji = "⚠️",
+            colorHex = ROJO,
+            badge = "PICO",
+            imagenUrl = IMAGEN_NOCTURNA,
+            paginas = listOf(
+                PaginaHistoria(
+                    emoji = "🌆",
+                    titulo = "Tu momento más intenso",
+                    cuerpo = if (nivelMaximoHoy > 0) {
+                        "El nivel más alto del día alcanzó ${nivelMaximoHoy.toInt()} dB. Un pico así pide protección auditiva o un cambio de lugar."
+                    } else {
+                        "Aún no registramos un pico alto hoy. Escucha tu entorno en distintos momentos y lo monitoreamos por ti."
+                    },
+                    colorHex = ROJO,
+                    metrica = if (nivelMaximoHoy > 0) "${nivelMaximoHoy.toInt()} dB" else "—",
+                    chip = "PICO DE ALERTA",
+                    imagenUrl = IMAGEN_NOCTURNA,
+                    tipoGrafica = TipoGrafica.ONDA,
+                    tendencia = 0.9f,
+                    alerta = true
+                )
+            )
+        )
+
+        // ── 4) CALIDAD AMBIENTAL ─────────────────────────────────────────
+        lista += Historia(
+            id = "calidad_ambiental_$fechaHoy",
+            nombre = "Calidad ambiental",
+            emoji = "🌿",
+            colorHex = VERDE,
+            badge = "ECO",
+            imagenUrl = IMAGEN_PARQUE,
+            paginas = listOf(
+                PaginaHistoria(
+                    emoji = "🌿",
+                    titulo = "Tu entorno en calma",
+                    cuerpo = "Has pasado el $pctTiempoSeguro% de tu tiempo en zonas seguras (menos de 65 dB). Sigue buscando tus refugios tranquilos.",
+                    colorHex = VERDE,
+                    metrica = "$pctTiempoSeguro%",
+                    chip = "ENTORNO EN CALMA",
+                    imagenUrl = IMAGEN_PARQUE,
+                    tipoGrafica = TipoGrafica.ONDA,
+                    tendencia = 0.3f
                 )
             )
         )
@@ -107,19 +196,22 @@ object GeneradorHistorias {
                 nombre = "Día pesado",
                 emoji = "🌊",
                 colorHex = ROJO,
+                imagenUrl = IMAGEN_NOCTURNA,
                 paginas = listOf(
                     PaginaHistoria(
                         emoji = "🌊",
                         titulo = "Tu oído ha trabajado mucho hoy",
                         cuerpo = "Llevas ${puntosHoy.toInt()} puntos (el ${(progreso * 100).toInt()}% de tu meta). Hoy tu entorno estuvo más ruidoso de lo recomendado.",
                         colorHex = ROJO,
-                        datoDestacado = "${puntosHoy.toInt()} pts"
+                        datoDestacado = "${puntosHoy.toInt()} pts",
+                        imagenUrl = IMAGEN_NOCTURNA
                     ),
                     PaginaHistoria(
                         emoji = "🧘",
                         titulo = "Regálate un descanso",
                         cuerpo = "Considera 30 minutos de silencio o música suave sin audífonos antes de dormir. Tu oído te lo agradecerá.",
-                        colorHex = ROJO
+                        colorHex = ROJO,
+                        imagenUrl = IMAGEN_NOCTURNA
                     )
                 )
             )

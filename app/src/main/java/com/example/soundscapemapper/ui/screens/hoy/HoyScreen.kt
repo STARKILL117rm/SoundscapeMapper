@@ -10,7 +10,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -25,12 +24,9 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -41,8 +37,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -50,15 +44,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Eco
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.GraphicEq
-import androidx.compose.material.icons.outlined.Hearing
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Lightbulb
-import androidx.compose.material.icons.outlined.Place
-import androidx.compose.material.icons.outlined.Security
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Card
@@ -92,6 +79,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -103,6 +91,7 @@ import com.example.soundscapemapper.Configuracion
 import com.example.soundscapemapper.NivelRuido
 import com.example.soundscapemapper.SoundAnalyzer
 import com.example.soundscapemapper.sensor.SensorStateHolder
+import com.example.soundscapemapper.ui.components.FilaHistorias
 import com.example.soundscapemapper.ui.components.VisorHistorias
 import com.example.soundscapemapper.ui.historias.GeneradorHistorias
 import com.example.soundscapemapper.ui.historias.Historia
@@ -123,6 +112,7 @@ private val AMANECER_FIN = (6.25f * HORA_SEG).toInt()
 private val ATARDECER_INICIO = (19.25f * HORA_SEG).toInt()
 private val ATARDECER_FIN = (19.75f * HORA_SEG).toInt()
 private val NOCHE_INICIO = (19.5f * HORA_SEG).toInt()
+private val NOCHE_FIN = (5.5f * HORA_SEG).toInt()
 
 private val Menta = Color(0xFF00F5A0)
 private val Turquesa = Color(0xFF00D9F6)
@@ -135,25 +125,30 @@ private val SombraSuave = Shadow(
     blurRadius = 3f
 )
 
-// Fondo claro fusionado: blanco hueso -> crema dorado según avanza el día.
-private val FONDO_PUNTOS = listOf(
-    0 to Color(0xFF0B0E14),
+// Negro profundo de la noche: se mantiene SIEMPRE FIJO de 19:30 a 05:30.
+private val NegroProfundo = Color(0xFF0B0E14)
+
+// Fondo diurno: alba (blanco hueso) -> crema dorado -> atardecer de regreso a la noche.
+// El bloque nocturno no está aquí: se resuelve aparte como color constante.
+private val FONDO_DIA = listOf(
+    (5.5f * HORA_SEG).toInt() to NegroProfundo,
     (6 * HORA_SEG) to Color(0xFFFAFAFA),
     (12 * HORA_SEG) to Color(0xFFFEF3C7),
-    (19.5f * HORA_SEG).toInt() to Color(0xFFFFFBEB),
-    (19.55f * HORA_SEG).toInt() to Color(0xFF0B0E14),
-    (24 * HORA_SEG) to Color(0xFF0B0E14)
+    (19.25f * HORA_SEG).toInt() to Color(0xFFFFFBEB),
+    (19.5f * HORA_SEG).toInt() to NegroProfundo
 )
 
-// Resplandor: amarillo matutino suave -> miel -> dorado -> ámbar -> plata nocturna.
+// Resplandor: amarillo matutino -> miel -> dorado -> ámbar -> azul nocturno profundo.
+// De noche el tono es CONSTANTE para no aclarar ni volver grisáceo el fondo negro.
 private val RESPLANDOR_PUNTOS = listOf(
-    0 to Color(0xFFE2E8F0),
+    0 to Color(0xFF2A3A5C),
+    (5.5f * HORA_SEG).toInt() to Color(0xFF2A3A5C),
     (6 * HORA_SEG) to Color(0xFFFFF3C4),
     (12 * HORA_SEG) to Color(0xFFFDE047),
     (17 * HORA_SEG) to Color(0xFFFBBF24),
     (19.5f * HORA_SEG).toInt() to Color(0xFFF59E0B),
-    (19.55f * HORA_SEG).toInt() to Color(0xFFE2E8F0),
-    (24 * HORA_SEG) to Color(0xFFE2E8F0)
+    (19.55f * HORA_SEG).toInt() to Color(0xFF2A3A5C),
+    (24 * HORA_SEG) to Color(0xFF2A3A5C)
 )
 
 private fun clamp01(valor: Float): Float = valor.coerceIn(0f, 1f)
@@ -171,7 +166,7 @@ private fun colorEntre(sod: Int, puntos: List<Pair<Int, Color>>): Color {
     return puntos.last().second
 }
 
-private fun esNoche(sod: Int): Boolean = sod >= NOCHE_INICIO || sod < 6 * HORA_SEG
+private fun esNoche(sod: Int): Boolean = sod >= NOCHE_INICIO || sod < NOCHE_FIN
 
 private fun saludoDe(sod: Int): String = when {
     esNoche(sod) -> "Buenas noches"
@@ -246,19 +241,6 @@ private fun fraseEmpatica(nivel: NivelRuido): String = when (nivel) {
     NivelRuido.PELIGRO -> "Entorno ruidoso detectado"
 }
 
-private fun iconoDeHistoria(historia: Historia): ImageVector = when {
-    historia.id.startsWith("estado_actual") -> Icons.Outlined.GraphicEq
-    historia.id.startsWith("dosis_hoy") -> Icons.Outlined.Timer
-    historia.id.startsWith("dia_pesado") -> Icons.Outlined.Warning
-    historia.id.startsWith("semana") -> Icons.Outlined.DateRange
-    historia.id.startsWith("lugares") -> Icons.Outlined.Place
-    historia.id.startsWith("sabias") -> Icons.Outlined.Lightbulb
-    historia.id.startsWith("educativa_escala") -> Icons.Outlined.BarChart
-    historia.id.startsWith("educativa_dosis") -> Icons.Outlined.Hearing
-    historia.id.startsWith("educativa_protegete") -> Icons.Outlined.Security
-    else -> Icons.Outlined.FavoriteBorder
-}
-
 @Composable
 fun HoyScreen(
     db: AppDatabase,
@@ -306,31 +288,56 @@ fun HoyScreen(
 
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
         }
-        acelerometro?.let { sensorManager.registerListener(listener, it, SensorManager.SENSOR_DELAY_UI) }
+        acelerometro?.let { sensorManager.registerListener(listener, it, SensorManager.SENSOR_DELAY_GAME) }
         onDispose { sensorManager.unregisterListener(listener) }
     }
 
-    // Desplazamiento objetivo por inclinación y física de retorno con spring.
-    val targetOffsetX = tiltX.coerceIn(-9f, 9f) * 10f
-    val targetOffsetY = tiltY.coerceIn(-9f, 9f) * 10f
+    // Física de resorte elástico: respuesta ágil al mover y micro-rebote orgánico al detenerse.
+    val resorteElastico = spring<Float>(
+        stiffness = 180f,
+        dampingRatio = 0.55f
+    )
+
+    val densidad = LocalDensity.current
+    val maxAstroPx = with(densidad) { 25.dp.toPx() }     // Capa 1 (Astro): hasta 25.dp
+    val maxParallaxPx = with(densidad) { 10.dp.toPx() }  // Capa 2 (Estrellas/Resplandor): mitad
+
+    val inclinacionX = (tiltX.coerceIn(-9f, 9f) / 9f)
+    val inclinacionY = (tiltY.coerceIn(-9f, 9f) / 9f)
+
+    // Capa 1 - Astro (Sol/Luna): mayor amplitud + rotación física sutil (-8° a +8°).
     val parX by animateFloatAsState(
-        targetValue = targetOffsetX,
-        animationSpec = spring(
-            stiffness = Spring.StiffnessMedium,
-            dampingRatio = Spring.DampingRatioMediumBouncy
-        ),
+        targetValue = inclinacionX * maxAstroPx,
+        animationSpec = resorteElastico,
         label = "parX"
     )
     val parY by animateFloatAsState(
-        targetValue = targetOffsetY,
-        animationSpec = spring(
-            stiffness = Spring.StiffnessMedium,
-            dampingRatio = Spring.DampingRatioMediumBouncy
-        ),
+        targetValue = inclinacionY * maxAstroPx,
+        animationSpec = resorteElastico,
         label = "parY"
     )
+    val rotacionAstro by animateFloatAsState(
+        targetValue = inclinacionX * 8f,
+        animationSpec = resorteElastico,
+        label = "rotacionAstro"
+    )
 
-    val fondo = remember(sodActual) { colorEntre(sodActual, FONDO_PUNTOS) }
+    // Capa 2 - Estrellas / Resplandor: parallax a media velocidad (máx 10.dp).
+    val parallaxX by animateFloatAsState(
+        targetValue = inclinacionX * maxParallaxPx,
+        animationSpec = resorteElastico,
+        label = "parallaxX"
+    )
+    val parallaxY by animateFloatAsState(
+        targetValue = inclinacionY * maxParallaxPx,
+        animationSpec = resorteElastico,
+        label = "parallaxY"
+    )
+
+    // De noche el fondo es SIEMPRE negro profundo fijo (#0B0E14), sin interpolación progresiva.
+    val fondo = remember(sodActual) {
+        if (esNoche(sodActual)) NegroProfundo else colorEntre(sodActual, FONDO_DIA)
+    }
     val noche = esNoche(sodActual)
     val pal = if (noche) PaletaOscura else PaletaClara
     val saludo = saludoDe(sodActual)
@@ -396,7 +403,8 @@ fun HoyScreen(
             minutosSobre80Hoy = sensorState.dosisSobre80.value,
             puntosHoy = puntosHoy,
             registrosSemana = vm.registrosSemana,
-            mediciones = vm.mediciones
+            mediciones = vm.mediciones,
+            pctTiempoSeguro = pctSeguro
         )
     }
 
@@ -416,6 +424,9 @@ fun HoyScreen(
             sod = sodActual,
             parX = parX,
             parY = parY,
+            parallaxX = parallaxX,
+            parallaxY = parallaxY,
+            rotacion = rotacionAstro,
             fondo = fondoAnimado
         )
 
@@ -463,8 +474,7 @@ fun HoyScreen(
                     onAbrir = { historiaAbierta = it },
                     texto = textoAnimado,
                     textoSuave = textoSuaveAnimado,
-                    claro = !noche,
-                    verde = verdeAnimado
+                    claro = !noche
                 )
             }
 
@@ -519,6 +529,9 @@ private fun CieloAmbiental(
     sod: Int,
     parX: Float,
     parY: Float,
+    parallaxX: Float,
+    parallaxY: Float,
+    rotacion: Float,
     fondo: Color
 ) {
     val estrellas = remember {
@@ -564,14 +577,14 @@ private fun CieloAmbiental(
         val margenEnd = 32.dp.toPx()
         val sunInset = 14.dp.toPx() // separa el astro del borde para evitar que los rayos se corten
 
-        // Cross-fade suave en el amanecer (06:00) y el anochecer (19:30).
+        // Cross-fade suave en el amanecer (05:45) y el anochecer (19:15).
         val subida = clamp01((sod - AMANECER_INICIO) / (AMANECER_FIN - AMANECER_INICIO).toFloat())
         val bajada = 1f - clamp01((sod - ATARDECER_INICIO) / (ATARDECER_FIN - ATARDECER_INICIO).toFloat())
         val solAlpha = subida * bajada
         // Usar OR (max) entre las dos transiciones para asegurar que la luna aparezca por la noche.
         val lunaAlpha = clamp01(max(1f - subida, 1f - bajada))
 
-        // Velo atmosférico superior con la luz del momento.
+        // Velo atmosférico superior con la luz del momento (solo visible de día).
         drawRect(
             brush = Brush.verticalGradient(
                 colors = listOf(glow.copy(alpha = 0.22f * solAlpha), Color.Transparent),
@@ -581,24 +594,17 @@ private fun CieloAmbiental(
             size = Size(w, h)
         )
 
-        // Resplandor ambiental en la esquina superior derecha, junto al astro.
+        // ── CAPA 2 (fondo medio): Resplandor ambiental en la esquina superior derecha.
+        // Parallax a media velocidad (máx 10.dp) para dar profundidad 3D.
         val glowR = w * 0.70f
-        // Hacer movimiento más visible y divertido: combinar inclinación con un pequeño "bobbing".
-        val sr = w * 0.07f
-        val bobAngle = (titilar * 6.2832f).toDouble()
-        val bobX = (sin(bobAngle) * (sr * 0.45f)).toFloat()
-        val bobY = (sin(bobAngle * 0.7) * (sr * 0.28f)).toFloat()
-        val finalParX = parX * 1.15f + bobX
-        val finalParY = parY * 1.15f + bobY
-
         val glowPos = Offset(
-            x = w - (margenEnd + sunInset) - w * 0.05f + finalParX,
-            y = (margenTop + sunInset) + w * 0.05f + finalParY
+            x = w - (margenEnd + sunInset) - w * 0.05f + parallaxX,
+            y = (margenTop + sunInset) + w * 0.05f + parallaxY
         )
         drawCircle(
             brush = Brush.radialGradient(
                 colors = listOf(
-                    glow.copy(alpha = 0.30f * (solAlpha + lunaAlpha * 0.7f)),
+                    glow.copy(alpha = 0.22f * (solAlpha + lunaAlpha * 0.5f)),
                     Color.Transparent
                 ),
                 center = glowPos,
@@ -608,9 +614,9 @@ private fun CieloAmbiental(
             radius = glowR
         )
 
-        // Campo de estrellas titilantes de noche.
+        // ── CAPA 2: Campo de estrellas titilantes de noche, parallax a media velocidad.
         if (lunaAlpha > 0.01f) {
-            translate(left = finalParX * 0.25f, top = finalParY * 0.20f) {
+            translate(left = parallaxX * 0.5f, top = parallaxY * 0.5f) {
                 estrellas.forEach { e ->
                     val alfa = (
                         e.base * (0.35 + 0.65 * ((sin(e.fase + titilar * 6.2832f) + 1.0) / 2.0))
@@ -625,11 +631,15 @@ private fun CieloAmbiental(
             }
         }
 
-        // Sol: esquina superior derecha (Alignment.TopEnd, top 12dp / end 16dp)
-        // con desplazamiento por sensor y retorno físico con spring.
+        // ── CAPA 1 (primer plano): Sol en la esquina superior derecha (Alignment.TopEnd).
+        // Desplazamiento amplio (hasta 25.dp) + rotación física sutil (-8° a +8°).
         if (solAlpha > 0.01f) {
-            val sx = w - (margenEnd + sunInset) - sr + finalParX
-            val sy = (margenTop + sunInset) + sr + finalParY
+            val sr = w * 0.07f
+            val bobAngle = (titilar * 6.2832f).toDouble()
+            val bobX = (sin(bobAngle) * (sr * 0.30f)).toFloat()
+            val bobY = (sin(bobAngle * 0.7) * (sr * 0.18f)).toFloat()
+            val sx = w - (margenEnd + sunInset) - sr + parX + bobX
+            val sy = (margenTop + sunInset) + sr + parY + bobY
             val pivote = Offset(sx, sy)
             drawCircle(
                 brush = Brush.radialGradient(
@@ -643,161 +653,52 @@ private fun CieloAmbiental(
                 center = pivote,
                 radius = sr * 2.8f
             )
-            rotate(rotarSol, pivot = pivote) {
-                repeat(12) { i ->
-                    rotate(i * 30f, pivot = pivote) {
-                        // acortar ligeramente las líneas y usar el pivote seguro para evitar recortes
-                        drawLine(
-                            color = Color(0xFFFFC266).copy(alpha = solAlpha),
-                            start = Offset(sx, sy - sr * 1.05f),
-                            end = Offset(sx, sy - sr * 1.55f),
-                            strokeWidth = 4.dp.toPx(),
-                            cap = StrokeCap.Round
-                        )
+            rotate(rotacion, pivot = pivote) {
+                rotate(rotarSol, pivot = pivote) {
+                    repeat(12) { i ->
+                        rotate(i * 30f, pivot = pivote) {
+                            // acortar ligeramente las líneas y usar el pivote seguro para evitar recortes
+                            drawLine(
+                                color = Color(0xFFFFC266).copy(alpha = solAlpha),
+                                start = Offset(sx, sy - sr * 1.05f),
+                                end = Offset(sx, sy - sr * 1.55f),
+                                strokeWidth = 4.dp.toPx(),
+                                cap = StrokeCap.Round
+                            )
+                        }
                     }
                 }
+                drawCircle(glow.copy(alpha = solAlpha), sr, pivote)
             }
-            drawCircle(glow.copy(alpha = solAlpha), sr, pivote)
         }
 
-        // Luna creciente: misma esquina superior derecha durante la noche.
+        // ── CAPA 1: Luna creciente en la misma esquina superior derecha durante la noche,
+        // con la misma amplitud de desplazamiento y rotación física.
         if (lunaAlpha > 0.01f) {
             val mr = w * 0.05f
             val mx = w - margenEnd - mr + parX
             val my = margenTop + mr + parY
-            drawCircle(
-                brush = Brush.radialGradient(
-                    colors = listOf(
-                        Color(0xFFE2E8F0).copy(alpha = 0.40f * lunaAlpha),
-                        Color.Transparent
+            rotate(rotacion, pivot = Offset(mx, my)) {
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            Color(0xFFE2E8F0).copy(alpha = 0.40f * lunaAlpha),
+                            Color.Transparent
+                        ),
+                        center = Offset(mx, my),
+                        radius = mr * 3f
                     ),
                     center = Offset(mx, my),
                     radius = mr * 3f
-                ),
-                center = Offset(mx, my),
-                radius = mr * 3f
-            )
-            drawCircle(Color(0xFFE2E8F0).copy(alpha = lunaAlpha), mr, Offset(mx, my))
-            drawCircle(
-                color = fondo.copy(alpha = lunaAlpha),
-                radius = mr * 0.90f,
-                center = Offset(mx + mr * 0.45f, my - mr * 0.16f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun FilaHistorias(
-    historias: List<Historia>,
-    vistas: Set<String>,
-    onAbrir: (Historia) -> Unit,
-    texto: Color,
-    textoSuave: Color,
-    claro: Boolean,
-    verde: Color
-) {
-    if (historias.isEmpty()) return
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        contentPadding = PaddingValues(horizontal = 2.dp)
-    ) {
-        items(historias, key = { it.id }) { historia ->
-            BurbujaHistoria(
-                historia = historia,
-                vista = historia.id in vistas,
-                onClick = { onAbrir(historia) },
-                texto = texto,
-                textoSuave = textoSuave,
-                claro = claro,
-                verde = verde
-            )
-        }
-    }
-}
-
-@Composable
-private fun BurbujaHistoria(
-    historia: Historia,
-    vista: Boolean,
-    onClick: () -> Unit,
-    texto: Color,
-    textoSuave: Color,
-    claro: Boolean,
-    verde: Color
-) {
-    val color = Color(historia.colorHex)
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(62.dp)
-                .clip(CircleShape)
-                .then(
-                    if (vista) {
-                        Modifier.background(if (claro) Color(0xFFD1D5DB) else Color(0xFF3A3D42))
-                    } else {
-                        Modifier.background(
-                            Brush.sweepGradient(
-                                listOf(Menta, Turquesa, Menta)
-                            )
-                        )
-                    }
                 )
-                .padding(3.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(2.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (claro) Color(0xFFFFF9E6) else Color(0xFF1E222B)
-                    )
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .border(
-                            1.dp,
-                            if (vista) {
-                                if (claro) Color(0xFFD1D5DB)
-                                else Color.White.copy(alpha = 0.06f)
-                            } else {
-                                color.copy(alpha = 0.35f)
-                            },
-                            CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        iconoDeHistoria(historia),
-                        contentDescription = historia.nombre,
-                        tint = when {
-                            !vista && claro -> verde
-                            vista && claro -> Color(0xFF1E293B)
-                            vista -> textoSuave
-                            else -> color
-                        },
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
+                drawCircle(Color(0xFFE2E8F0).copy(alpha = lunaAlpha), mr, Offset(mx, my))
+                drawCircle(
+                    color = fondo.copy(alpha = lunaAlpha),
+                    radius = mr * 0.90f,
+                    center = Offset(mx + mr * 0.45f, my - mr * 0.16f)
+                )
             }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            historia.nombre,
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Medium,
-                shadow = if (claro) SombraSuave else null
-            ),
-            color = if (vista) textoSuave else texto,
-            maxLines = 1
-        )
     }
 }
 

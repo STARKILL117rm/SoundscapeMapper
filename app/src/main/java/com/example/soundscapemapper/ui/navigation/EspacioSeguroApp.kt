@@ -185,11 +185,7 @@ fun EspacioSeguroApp(
                 )
             }
             composable(Rutas.MAPA) {
-                MapaScreen(
-                    db = db,
-                    sensorState = sensorState,
-                    onIrRegistro = { navController.navigate(Rutas.REGISTRO) }
-                )
+                MapaScreen(db = db)
             }
             composable(Rutas.REGISTRO) {
                 RegistroScreen(

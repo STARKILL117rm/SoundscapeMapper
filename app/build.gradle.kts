@@ -16,12 +16,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // Clave de Google Maps. Se toma de local.properties/gradle.properties
-        // (MAPS_API_KEY=...) y si no existe se usa un valor vacío.
-        val mapsApiKey = (project.findProperty("MAPS_API_KEY") as String?) ?: ""
-        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
-        buildConfigField("String", "MAPS_API_KEY", "\"$mapsApiKey\"")
     }
 
     buildTypes {
@@ -61,9 +55,11 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation("androidx.compose.material:material-icons-extended")
-    // Mapas de Google para Compose
-    implementation("com.google.maps.android:maps-compose:4.3.3")
-    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    // Carga de imágenes (Coil) para el visor inmersivo de historias
+    implementation("io.coil-kt:coil-compose:2.7.0")
+    // Mapas de OpenStreetMap (gratis, sin API key). Fuente de tiles con política
+    // propia para que OSM NO normalice/bloquee nuestro User-Agent.
+    implementation("org.osmdroid:osmdroid-android:6.1.20")
     implementation("com.google.android.gms:play-services-location:21.2.0")
 
     // Base de Datos - Room
