@@ -15,8 +15,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.example.soundscapemapper.sensor.SensorStateHolder
 import com.example.soundscapemapper.ui.navigation.EspacioSeguroApp
+import com.example.soundscapemapper.ui.screens.splash.SplashScreen
 import com.example.soundscapemapper.ui.theme.SoundscapeMapperTheme
 import com.google.android.gms.location.LocationServices
 
@@ -65,15 +72,29 @@ class MainActivity : ComponentActivity(), SensorEventListener {
 
         setContent {
             SoundscapeMapperTheme {
-                EspacioSeguroApp(
-                    db = AppDatabase.getDatabase(applicationContext),
-                    sensorState = SensorStateHolder,
-                    onToggleServicio = { activo -> toggleServicio(activo) },
-                    onAlternarCaptura = { pausada -> alternarCaptura(pausada) },
-                    onCambiarUmbral = { valor ->
-                        Configuracion.guardarUmbralAlerta(this, valor.toDouble())
+                var mostrarSplash by remember { mutableStateOf(true) }
+
+                Crossfade(
+                    targetState = mostrarSplash,
+                    animationSpec = tween(500),
+                    label = "splash_fade"
+                ) { enSplash ->
+                    if (enSplash) {
+                        SplashScreen(
+                            onFinished = { mostrarSplash = false }
+                        )
+                    } else {
+                        EspacioSeguroApp(
+                            db = AppDatabase.getDatabase(applicationContext),
+                            sensorState = SensorStateHolder,
+                            onToggleServicio = { activo -> toggleServicio(activo) },
+                            onAlternarCaptura = { pausada -> alternarCaptura(pausada) },
+                            onCambiarUmbral = { valor ->
+                                Configuracion.guardarUmbralAlerta(this, valor.toDouble())
+                            }
+                        )
                     }
-                )
+                }
             }
         }
     }

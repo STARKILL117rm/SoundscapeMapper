@@ -31,6 +31,7 @@ android {
         compose = true
         buildConfig = true
     }
+    compileSdkMinor = 0
 }
 
 dependencies {

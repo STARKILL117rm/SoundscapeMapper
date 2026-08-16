@@ -196,6 +196,7 @@ fun EspacioSeguroApp(
             composable(Rutas.YO) {
                 YoScreen(
                     sensorState = sensorState,
+                    db = db,
                     onToggleServicio = onToggleServicio,
                     onAlternarCaptura = onAlternarCaptura,
                     onCambiarUmbral = onCambiarUmbral

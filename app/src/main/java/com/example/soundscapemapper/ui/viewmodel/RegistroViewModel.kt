@@ -24,6 +24,7 @@ class RegistroViewModel(private val db: AppDatabase) : ViewModel() {
             val porCategoria = when (filtro) {
                 1 -> m.categoria == "Tranquilo"
                 2 -> m.categoria == "Estresante"
+                3 -> m.nivelLuz >= 300f
                 else -> true
             }
             val porNombre = busqueda.isBlank() || m.nombreLugar.contains(busqueda, ignoreCase = true)

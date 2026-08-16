@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -79,9 +80,10 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Registro") },
+                title = { Text("Registro e Historial OMS", fontWeight = FontWeight.Bold) },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -89,10 +91,10 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
             FloatingActionButton(
                 onClick = onNuevaMedicion,
                 shape = RoundedCornerShape(20.dp),
-                containerColor = MaterialTheme.colorScheme.surface,
-                contentColor = MaterialTheme.colorScheme.primary,
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
                 elevation = androidx.compose.material3.FloatingActionButtonDefaults.elevation(
-                    defaultElevation = 3.dp
+                    defaultElevation = 4.dp
                 )
             ) {
                 Row(
@@ -111,19 +113,81 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            // Dashboard de Exposición Personal Diaria (Alineado al PDF)
+            val totalMediciones = vm.mediciones.size
+            if (totalMediciones > 0) {
+                val promedioDb = vm.mediciones.map { it.decibelios }.average().toFloat()
+                val (colorPromedio, estadoPromedio) = when {
+                    promedioDb < 65f -> Pair(VerdeSalud, "Exposición Saludable (<65 dB)")
+                    promedioDb <= 80f -> Pair(Color(0xFFFFA000), "Exposición Moderada (65-80 dB)")
+                    else -> Pair(RojoSalud, "Riesgo Auditivo (>80 dB)")
+                }
+
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = colorPromedio.copy(alpha = 0.10f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .background(colorPromedio.copy(alpha = 0.2f), CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("📊", fontSize = 18.sp)
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Resumen de Exposición Personal",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    estadoPromedio,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = colorPromedio
+                                )
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    String.format(Locale.US, "%.1f dB", promedioDb),
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = colorPromedio
+                                )
+                                Text(
+                                    "$totalMediciones lugares",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = vm.busqueda,
                 onValueChange = { vm.busqueda = it },
-                placeholder = { Text("Buscar por nombre…") },
+                placeholder = { Text("Buscar por nombre o lugar…") },
                 singleLine = true,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 shape = RoundedCornerShape(18.dp)
             )
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
 
+            // Filtros Multisensor (Ruido + Luz)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -133,32 +197,58 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
                 ChipFiltro("Todos", vm.filtro == 0) { vm.filtro = 0 }
                 ChipFiltro("Tranquilos", vm.filtro == 1) { vm.filtro = 1 }
                 ChipFiltro("Estresantes", vm.filtro == 2) { vm.filtro = 2 }
+                ChipFiltro("💡 Bien Iluminados", vm.filtro == 3) { vm.filtro = 3 }
             }
 
-            HorizontalDivider(modifier = Modifier.padding(top = 10.dp))
+            HorizontalDivider(modifier = Modifier.padding(top = 10.dp), color = MaterialTheme.colorScheme.outline.copy(alpha = 0.15f))
 
             val lista = vm.listaFiltrada
             if (vm.mediciones.isEmpty()) {
+                // Estado Vacío con Call To Action claro (Alineado a la Solución Propuesta del PDF)
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(32.dp),
+                        .padding(28.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text("🗺️", fontSize = 42.sp)
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        "Aún no hay mediciones.",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp
-                    )
-                    Text(
-                        "Toca 'Nueva medición' para analizar tu primer lugar.",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("🗺️🎙️💡", fontSize = 44.sp)
+                            Spacer(Modifier.height(14.dp))
+                            Text(
+                                "Mapea tu primer espacio sensorial",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Combina el micrófono (decibelios), luz ambiental (lux) y GPS para evaluar el confort de tus lugares de estudio, trabajo o descanso.",
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.height(18.dp))
+                            Button(
+                                onClick = onNuevaMedicion,
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            ) {
+                                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Realizar primera medición", fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             } else if (lista.isEmpty()) {
                 Column(
@@ -226,7 +316,7 @@ fun RegistroScreen(db: AppDatabase, onNuevaMedicion: () -> Unit) {
         AlertDialog(
             onDismissRequest = { pendienteBorrar = null },
             title = { Text("¿Eliminar este lugar?") },
-            text = { Text("\"${m.nombreLugar}\" (${m.decibelios} dB) se borrará del registro.") },
+            text = { Text("\"${m.nombreLugar}\" (${m.decibelios.toInt()} dB) se borrará del registro.") },
             confirmButton = {
                 TextButton(onClick = {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -267,7 +357,10 @@ private fun ChipFiltro(texto: String, seleccionado: Boolean, onClick: () -> Unit
 
 @Composable
 private fun ItemLugar(m: Medicion, onClick: () -> Unit) {
-    val colorCategoria = if (m.categoria == "Tranquilo") VerdeSalud else RojoSalud
+    val esTranquilo = m.categoria == "Tranquilo"
+    val colorCategoria = if (esTranquilo) VerdeSalud else RojoSalud
+    val esIdealEstudio = m.decibelios < 65f && m.nivelLuz >= 300f
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
@@ -289,20 +382,54 @@ private fun ItemLugar(m: Medicion, onClick: () -> Unit) {
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = m.nombreLugar.ifBlank { "Lugar sin nombre" },
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = m.nombreLugar.ifBlank { "Lugar sin nombre" },
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (esIdealEstudio) {
+                        Spacer(Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = VerdeSalud.copy(alpha = 0.16f)
+                        ) {
+                            Text(
+                                "🎓 Ideal Estudio",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF00695C),
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                            )
+                        }
+                    }
+                }
                 Spacer(Modifier.height(3.dp))
-                Text(
-                    text = m.fechaHora,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "${m.decibelios.toInt()} dB",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = colorCategoria
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "· ${m.nivelLuz.toInt()} lux",
+                        fontSize = 12.sp,
+                        color = AzulInfo
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "· ${m.fechaHora}",
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
-            InsigniaCategoria(tranquilo = m.categoria == "Tranquilo")
+            Spacer(Modifier.width(6.dp))
+            InsigniaCategoria(tranquilo = esTranquilo)
         }
     }
 }
@@ -396,7 +523,7 @@ private fun DetalleMedicion(
 
         Spacer(Modifier.height(16.dp))
 
-        FilaDetalle("Luz ambiental", "${m.nivelLuz.toInt()} lux", AzulInfo)
+        FilaDetalle("Confort de luz (Lux)", "${m.nivelLuz.toInt()} lux", AzulInfo)
         FilaDetalle("Coordenadas GPS", String.format(Locale.US, "%.4f, %.4f", m.latitud, m.longitud), AzulInfo)
         FilaDetalle("Fecha y hora", m.fechaHora, MaterialTheme.colorScheme.onSurfaceVariant)
 
@@ -468,3 +595,4 @@ private fun FilaDetalle(etiqueta: String, valor: String, color: Color) {
         )
     }
 }
+
