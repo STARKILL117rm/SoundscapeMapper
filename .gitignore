@@ -20,3 +20,8 @@
 *.toc
 *.lof
 *.lot
+
+# Report & Documentation files
+DOCUMENTO_PROYECTO_FINAL.*
+DOCUMENTO_PROYECTO_FINAL_SOUNDSCAPEMAPPER.md
+figuras/
